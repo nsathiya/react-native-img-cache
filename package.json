@@ -1,6 +1,6 @@
 {
-  "name": "react-native-img-cache",
-  "version": "0.0.0-development",
+  "name": "@fibo-app/fibo-imagecache",
+  "version": "0.1.0",
   "description": "CachedImage component for React native",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
@@ -16,19 +16,15 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/wcandillon/react-native-image-cache.git"
+    "url": "https://github.com/nsathiya/react-native-img-cache"
   },
   "keywords": [
     "react",
     "image",
     "cache"
   ],
-  "author": "William Candillon <wcandillon@gmail.com>",
+  "author": "Naren Sathiya",
   "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/wcandillon/react-native-image-cache/issues"
-  },
-  "homepage": "https://github.com/wcandillon/react-native-image-cache#readme",
   "devDependencies": {
     "@types/react": "^15.0.9",
     "@types/react-native": "^0.37.11",
