@@ -62,6 +62,9 @@ describe('Cache', () => {
     mockRNBlob.default.fs.writeFile = () => (
       new Promise((resolve, reject) => resolve('file Saved'))
     )
+    mockRNBlob.default.fs.exists = () => (
+      new Promise((resolve, reject) => resolve(true))
+    )
     mock('react-native-fetch-blob', mockRNBlob);
     ImageCache = require('../build/Cache').ImageCache;
     ImageCache
@@ -69,9 +72,10 @@ describe('Cache', () => {
     .then((cacheInstance) => {
       const cache = cacheInstance;
       cache.should.not.equal(null);
-      cache.queue.getSize().should.equal(0);
-      Object.keys(cache.map).length.should.equal(0);
-      cache.queue.print().should.equal('')
+      console.log('policy', cache.policy)
+      cache.policy.queue.getSize().should.equal(0);
+      Object.keys(cache.policy.map).length.should.equal(0);
+      cache.policy.queue.print().should.equal('')
       deleteCacheInstance();
       done();
     })
@@ -89,9 +93,9 @@ describe('Cache', () => {
     .then((cacheInstance) => {
       const cache = cacheInstance
       cache.should.not.equal(null)
-      cache.queue.getSize().should.equal(3);
-      Object.keys(cache.map).length.should.equal(3);
-      cache.queue.print().should.equal('pathc->pathb->patha->')
+      cache.policy.queue.getSize().should.equal(3);
+      Object.keys(cache.policy.map).length.should.equal(3);
+      cache.policy.queue.print().should.equal('pathc->pathb->patha->')
       done();
     })
     .catch((err) => console.log('err', err))
@@ -106,9 +110,9 @@ describe('Cache', () => {
       cache.update('pathd');
       cache.update('pathe');
       cache.should.not.equal(null)
-      cache.queue.getSize().should.equal(5);
-      Object.keys(cache.map).length.should.equal(5);
-      cache.queue.print().should.equal('pathe->pathd->pathc->pathb->patha->')
+      cache.policy.queue.getSize().should.equal(5);
+      Object.keys(cache.policy.map).length.should.equal(5);
+      cache.policy.queue.print().should.equal('pathe->pathd->pathc->pathb->patha->')
       done();
     })
     .catch((err) => console.log('err', err))
@@ -122,9 +126,9 @@ describe('Cache', () => {
       const cache = cacheInstance
       cache.update('pathb');
       cache.should.not.equal(null)
-      cache.queue.getSize().should.equal(5);
-      Object.keys(cache.map).length.should.equal(5);
-      cache.queue.print().should.equal('pathb->pathe->pathd->pathc->patha->')
+      cache.policy.queue.getSize().should.equal(5);
+      Object.keys(cache.policy.map).length.should.equal(5);
+      cache.policy.queue.print().should.equal('pathb->pathe->pathd->pathc->patha->')
       done();
     })
     .catch((err) => console.log('err', err))
@@ -139,9 +143,9 @@ describe('Cache', () => {
       cache.update('pathd');
       cache.update('patha');
       cache.should.not.equal(null)
-      cache.queue.getSize().should.equal(5);
-      Object.keys(cache.map).length.should.equal(5);
-      cache.queue.print().should.equal('patha->pathd->pathb->pathe->pathc->')
+      cache.policy.queue.getSize().should.equal(5);
+      Object.keys(cache.policy.map).length.should.equal(5);
+      cache.policy.queue.print().should.equal('patha->pathd->pathb->pathe->pathc->')
       done();
     })
     .catch((err) => console.log('err', err))
@@ -182,9 +186,9 @@ describe('Cache', () => {
 
       cache.update('pathf');
       cache.should.not.equal(null)
-      cache.queue.getSize().should.equal(5);
-      Object.keys(cache.map).length.should.equal(5);
-      cache.queue.print().should.equal('pathf->patha->pathd->pathb->pathe->')
+      cache.policy.queue.getSize().should.equal(5);
+      Object.keys(cache.policy.map).length.should.equal(5);
+      cache.policy.queue.print().should.equal('pathf->patha->pathd->pathb->pathe->')
       done();
     })
     .catch((err) => console.log('err', err))
@@ -210,11 +214,69 @@ describe('Cache', () => {
       cache.update('pathd');
       cache.update('pathe');
       cache.should.not.equal(null)
-      cache.queue.getSize().should.equal(5);
-      Object.keys(cache.map).length.should.equal(5);
-      cache.queue.print().should.equal('pathe->pathd->pathg->pathf->patha->')
+      cache.policy.queue.getSize().should.equal(5);
+      Object.keys(cache.policy.map).length.should.equal(5);
+      cache.policy.queue.print().should.equal('pathe->pathd->pathg->pathf->patha->')
+      deleteCacheInstance();
       done();
     })
     .catch((err) => console.log('err', err))
+  });
+
+  it('should initialize cache testing agains race conditions', (done) => {
+    mockRNBlob.default.fs.readFile = () => (
+      new Promise((resolve, reject) => {
+        setTimeout(() => {
+          resolve('["patha", "pathb", "pathc"]')
+        }, 1000);
+      })
+    )
+    mock('react-native-fetch-blob', mockRNBlob);
+    ImageCache = require('../build/Cache').ImageCache;
+    let cache1;
+    let cache2;
+    let cache3;
+
+    ImageCache
+    .get()
+    .then((cacheInstance) => {
+      cache1 = cacheInstance;
+    })
+    .catch((err) => console.log('err', err))
+
+    ImageCache
+    .get()
+    .then((cacheInstance) => {
+      cache2 = cacheInstance;
+    })
+    .catch((err) => console.log('err', err))
+
+    ImageCache
+    .get()
+    .then((cacheInstance) => {
+      cache3 = cacheInstance;
+
+      cache1.should.not.equal(null)
+      cache2.should.not.equal(null)
+      cache3.should.not.equal(null)
+
+      cache1.policy.queue.getSize().should.equal(3);
+      Object.keys(cache1.policy.map).length.should.equal(3);
+      cache1.policy.queue.print().should.equal('pathc->pathb->patha->')
+
+      cache2.policy.queue.getSize().should.equal(3);
+      Object.keys(cache2.policy.map).length.should.equal(3);
+      cache2.policy.queue.print().should.equal('pathc->pathb->patha->')
+
+      cache3.policy.queue.getSize().should.equal(3);
+      Object.keys(cache3.policy.map).length.should.equal(3);
+      cache3.policy.queue.print().should.equal('pathc->pathb->patha->')
+
+      cache3.requestQueue.length.should.equal(0);
+      done();
+    })
+    .catch((err) => console.log('err', err))
+
+
   });
 });

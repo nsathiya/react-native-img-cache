@@ -97,4 +97,3 @@ export class CustomCachedImage extends BaseCachedImage {
         return React.createElement(Component, Object.assign({}, props), this.props.children);
     }
 }
-//# sourceMappingURL=index.js.map

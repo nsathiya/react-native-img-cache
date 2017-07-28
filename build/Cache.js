@@ -1,6 +1,5 @@
 
-import { Node } from './Node';
-import { PriorityQueue } from './Queue';
+import { LRUPolicy } from './policies/lru';
 
 const RNFetchBlob = require("react-native-fetch-blob").default;
 const SHA1 = require("crypto-js/sha1");
@@ -11,7 +10,7 @@ const CACHE_LIMIT_FILE_COUNT = 10;
 
 export class ImageCache {
 
-    static readInQueue(file) {
+    static readQueue(file) {
       return new Promise((resolve, reject) => {
         RNFetchBlob.fs.readFile(QUEUE_DIR + file, 'utf8')
         .then((data) => resolve(JSON.parse(data)))
@@ -33,64 +32,88 @@ export class ImageCache {
       })
     }
 
+    static constructPolicy(data, type){
+      if (type === 'lru'){
+        return new LRUPolicy(data);
+      }
+    }
+
+    static readQueueAndResolve(file) {
+      ImageCache.instance.loading = true;
+      ImageCache.readQueue(file)
+      .then((data) => {
+        ImageCache.instance.policy = ImageCache.constructPolicy(data, 'lru');
+        ImageCache.instance.loading = false;
+
+        //process and remove requests
+        const requests = ImageCache.instance.requestQueue;
+        requests.reverse();
+        for (let idx = requests.length-1; idx >= 0; idx-- ){
+          requests[idx](ImageCache.instance);
+          requests.splice(idx, 1);
+        }
+      })
+      .catch((err) => console.log('Error reading queue and resolvings- ', err))
+    }
+
     static save(file, queueData) {
       return new Promise((resolve, reject) => {
         const data = JSON.stringify(queueData)
         RNFetchBlob.fs.writeFile(QUEUE_DIR + file, data, 'utf8')
-        .then((result) => (process.env.NODE_ENV === "TEST") ? console.log("") : console.log('Queue successfully saved!') )
+        .then((result) => {
+          if (process.env.NODE_ENV != "TEST") {
+            console.log('Queue successfully saved!');
+          }
+          resolve();
+        })
         .catch((err) => reject(err))
       })
     }
 
-    prepareMem(data){
-      let queue = new PriorityQueue();
-      const map = {};
-      data.forEach((d) => {
-        let n = new Node(d)
-        queue.enqueue(n)
-        map[d] = n;
-      })
-      return {queue, map}
-    }
-
-    constructor(data) {
+    constructor() {
         this.cache = {};
-        const { queue, map } = this.prepareMem(data)
-        this.queue = queue;
-        this.map = map;
+        this.policy = null;
+        this.loading = false;
+        this.requestQueue = [];
     }
 
     getPath(dbPath, immutable) {
-        let path = dbPath.substring(dbPath.lastIndexOf("/"));
-        const terms = dbPath.split("/");
-        const toEncode = terms[terms.length - 2];
-        const ext = path.indexOf(".") === -1 ? ".jpg" : path.substring(path.indexOf("."));
-        if (immutable === true) {
-            return BASE_DIR + "/" + SHA1(toEncode) + ext;
-        }
-        else {
-            return BASE_DIR + "/" + s4() + s4() + "-" + s4() + "-" + s4() + "-" + s4() + "-" + s4() + s4() + s4() + ext;
-        }
+        const ext = dbPath.indexOf(".") === -1 ? ".jpg" : dbPath.substring(dbPath.lastIndexOf("."));
+        return BASE_DIR + "/" + SHA1(dbPath) + ext;
     }
-    // static load(file) {
-    //   return new Promise((resolve, reject) => {
-    //     this.readInQueue(file)
-    //     .then((data) => resolve(data))
-    //     .catch((err) => reject(err))
-    //   })
-    // }
+
     static get() {
+
       return new Promise((resolve, reject) => {
+
+        // if !instance
+        //   make new instance
+        //   place this in queue
+        //   readQueue
+        // else if read == true
+        //   place this in queue
+        // else
+        //   resolve instance
+        //
+        // readInQueue
+        //   read = true
+        //   readqueue
+        //     then read = false
+        //     resolve all requests in queue
+
+
+
         if (!ImageCache.instance) {
-          this.readInQueue('queue.txt')
-          .then((data) => {
-            ImageCache.instance = new ImageCache(data);
-            resolve(ImageCache.instance);
-          })
-          .catch((err) => reject(err))
+          ImageCache.instance = new ImageCache();
+          ImageCache.instance.requestQueue.push(resolve);
+          ImageCache.readQueueAndResolve('queue.txt');
+        } else if (ImageCache.instance.loading === true) {
+          ImageCache.instance.requestQueue.push(resolve);
         } else {
           resolve(ImageCache.instance);
         }
+
+
       })
     }
 
@@ -119,6 +142,7 @@ export class ImageCache {
             this.get(dbPath);
         }
     }
+
     dispose(dbPath, handler) {
         const cache = this.cache[dbPath];
         if (cache) {
@@ -129,20 +153,7 @@ export class ImageCache {
             });
         }
     }
-    // bust(uri: string) {
-    //     const cache = this.cache[uri];
-    //     if (cache !== undefined && !cache.immutable) {
-    //         cache.path = undefined;
-    //         this.get(uri);
-    //     }
-    // }
-    //
-    // cancel(uri: string) {
-    //     const cache = this.cache[uri];
-    //     if (cache && cache.downloading) {
-    //         cache.task.cancel();
-    //     }
-    // }
+
     download(cache) {
         const { source } = cache;
         const { dbPath, dbProvider } = source;
@@ -195,34 +206,26 @@ export class ImageCache {
         //Cache eviction update
         this.update(dbPath)
     }
-    update(fileKey){
 
-      let updateNode;
-      if (this.map[fileKey]){
-        updateNode = this.map[fileKey]
-        //remove from queue
-        this.queue.remove(updateNode)
+    isFull(){
+      return Object.keys(this.cache).length >= CACHE_LIMIT_FILE_COUNT;
+    }
+
+    update(key){
+
+      if (this.policy.hasVal(key)){
+        this.policy.updatePriority(key);
       } else {
-        //if cache is full
-        if (this.queue.getSize() >= CACHE_LIMIT_FILE_COUNT){
-          console.log('Cache full! currentSize: ', this.queue.getSize())
-          //remove from queue
-          const toRemove = this.queue.dequeue();
-          //remove from map
-          delete this.map[toRemove.val]
-          //remove from disk
-          const path = this.getPath(toRemove.val, true)
+        if (this.isFull()){
+          const lowestPriority = this.policy.lowestPriority();
+          this.policy.remove(lowestPriority);
+          const path = this.getPath(lowestPriority, true);
           RNFetchBlob.fs.unlink(path);
-          //ToDo: delete from this.cache
+          delete this.cache[path.val];
         }
-        //make new node
-        updateNode = new Node(fileKey);
-        //add new to map
-        this.map[fileKey] = updateNode;
+        this.policy.add(key);
       }
-      //enqueue new to queue
-      this.queue.enqueue(updateNode)
-      //save queue to disk
-      ImageCache.save('queue.txt', this.queue.save());
+      ImageCache.save('queue.txt', this.policy.save());
+
     }
 }

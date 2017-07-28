@@ -41,6 +41,14 @@ export class PriorityQueue {
     return toRemove;
   }
 
+  peek(){
+    return this.tail.prev.val;
+  }
+
+  back(){
+    return this.head.next.val;
+  }
+
   getSize(){
     return this.currentSize;
   }
