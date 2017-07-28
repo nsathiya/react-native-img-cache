@@ -1,15 +1,11 @@
 {
   "name": "@fibo-app/fibo-imagecache",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "CachedImage component for React native",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
   "scripts": {
-    "lint": "tslint --project tsconfig.json",
-    "build": "tsc --pretty",
-    "watch": "tsc --watch --pretty",
     "test": "NODE_ENV=TEST mocha --compilers js:babel-core/register",
-    "release": "semantic-release pre && npm publish && semantic-release post"
   },
   "files": [
     "build"
