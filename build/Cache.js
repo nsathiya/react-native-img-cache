@@ -61,7 +61,6 @@ export class ImageCache {
         if (process.env.NODE_ENV !== "TEST") {
           console.log('Queue successfully saved!');
         }
-        return;
       })
       .catch((err) => console.log('Error saving queue', err))
     }
