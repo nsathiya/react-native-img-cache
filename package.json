@@ -1,45 +1,45 @@
 {
-  "name": "react-native-img-cache",
-  "version": "0.0.0-development",
+  "name": "@fibo-app/fibo-imagecache",
+  "version": "0.2.0",
   "description": "CachedImage component for React native",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
   "scripts": {
-    "lint": "tslint --project tsconfig.json",
-    "build": "tsc --pretty",
-    "watch": "tsc --watch --pretty",
-    "test": "npm run lint && npm run build",
-    "release": "semantic-release pre && npm publish && semantic-release post"
+    "test": "NODE_ENV=TEST mocha --compilers js:babel-core/register",
   },
   "files": [
     "build"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/wcandillon/react-native-image-cache.git"
+    "url": "https://github.com/nsathiya/react-native-img-cache"
   },
   "keywords": [
     "react",
     "image",
     "cache"
   ],
-  "author": "William Candillon <wcandillon@gmail.com>",
+  "author": "Naren Sathiya",
   "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/wcandillon/react-native-image-cache/issues"
-  },
-  "homepage": "https://github.com/wcandillon/react-native-image-cache#readme",
   "devDependencies": {
     "@types/react": "^15.0.9",
     "@types/react-native": "^0.37.11",
+    "babel-core": "^6.25.0",
+    "babel-loader": "^7.1.1",
+    "babel-preset-es2015": "^6.24.1",
+    "chai": "^4.1.0",
     "condition-circle": "^1.5.0",
+    "mocha": "^3.4.2",
+    "mock-require": "^2.0.2",
     "semantic-release": "^6.3.2",
+    "sinon": "^2.3.8",
     "ts-npm-lint": "^0.1.0",
     "tslint": "^4.4.2",
     "typescript": "^2.1.6"
   },
   "dependencies": {
-    "crypto-js": "^3.1.9-1"
+    "crypto-js": "^3.1.9-1",
+    "react-native-fetch-blob": "^0.10.6"
   },
   "release": {
     "verifyConditions": "condition-circle"
