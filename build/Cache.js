@@ -6,7 +6,7 @@ const SHA1 = require("crypto-js/sha1");
 const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
 const BASE_DIR = RNFetchBlob.fs.dirs.DocumentDir + "/imageFiles";
 const QUEUE_DIR = RNFetchBlob.fs.dirs.DocumentDir + "/";
-const CACHE_LIMIT_FILE_COUNT = 10;
+const CACHE_LIMIT_FILE_COUNT = 5;
 
 export class ImageCache {
 
@@ -46,63 +46,40 @@ export class ImageCache {
         ImageCache.instance.loading = false;
 
         //process and remove requests
-        const requests = ImageCache.instance.requestQueue;
-        requests.reverse();
-        for (let idx = requests.length-1; idx >= 0; idx-- ){
-          requests[idx](ImageCache.instance);
-          requests.splice(idx, 1);
-        }
+        ImageCache.instance.requestQueue.forEach((resolve) => {
+          resolve(ImageCache.instance);
+        });
+        ImageCache.instance.requestQueue = [];
       })
       .catch((err) => console.log('Error reading queue and resolvings- ', err))
     }
 
     static save(file, queueData) {
-      return new Promise((resolve, reject) => {
-        const data = JSON.stringify(queueData)
-        RNFetchBlob.fs.writeFile(QUEUE_DIR + file, data, 'utf8')
-        .then((result) => {
-          if (process.env.NODE_ENV != "TEST") {
-            console.log('Queue successfully saved!');
-          }
-          resolve();
-        })
-        .catch((err) => reject(err))
+      const data = JSON.stringify(queueData)
+      RNFetchBlob.fs.writeFile(QUEUE_DIR + file, data, 'utf8')
+      .then((result) => {
+        if (process.env.NODE_ENV !== "TEST") {
+          console.log('Queue successfully saved!');
+        }
       })
+      .catch((err) => console.log('Error saving queue', err))
     }
 
     constructor() {
+      //TODO: move cache to LRU
         this.cache = {};
         this.policy = null;
         this.loading = false;
         this.requestQueue = [];
     }
 
-    getPath(dbPath, immutable) {
+    getPath(dbPath) {
         const ext = dbPath.indexOf(".") === -1 ? ".jpg" : dbPath.substring(dbPath.lastIndexOf("."));
         return BASE_DIR + "/" + SHA1(dbPath) + ext;
     }
 
     static get() {
-
       return new Promise((resolve, reject) => {
-
-        // if !instance
-        //   make new instance
-        //   place this in queue
-        //   readQueue
-        // else if read == true
-        //   place this in queue
-        // else
-        //   resolve instance
-        //
-        // readInQueue
-        //   read = true
-        //   readqueue
-        //     then read = false
-        //     resolve all requests in queue
-
-
-
         if (!ImageCache.instance) {
           ImageCache.instance = new ImageCache();
           ImageCache.instance.requestQueue.push(resolve);
@@ -112,8 +89,6 @@ export class ImageCache {
         } else {
           resolve(ImageCache.instance);
         }
-
-
       })
     }
 
@@ -132,7 +107,7 @@ export class ImageCache {
                 downloading: false,
                 handlers: [handler],
                 immutable: immutable === true,
-                path: immutable === true ? this.getPath(dbPath, immutable) : undefined
+                path: this.getPath(dbPath)
             };
             this.get(dbPath);
         }
@@ -162,7 +137,7 @@ export class ImageCache {
             .getDownloadURL().then((uri) => {
             if (!cache.downloading) {
                 console.log('downloading...');
-                const path = this.getPath(dbPath, cache.immutable);
+                const path = this.getPath(dbPath);
                 cache.downloading = true;
                 const method = source.method ? source.method : "GET";
                 cache.task = RNFetchBlob.config({ path }).fetch(method, uri, source.headers);
@@ -212,20 +187,18 @@ export class ImageCache {
     }
 
     update(key){
-
       if (this.policy.hasVal(key)){
         this.policy.updatePriority(key);
       } else {
         if (this.isFull()){
           const lowestPriority = this.policy.lowestPriority();
           this.policy.remove(lowestPriority);
-          const path = this.getPath(lowestPriority, true);
+          const path = this.getPath(lowestPriority);
           RNFetchBlob.fs.unlink(path);
-          delete this.cache[path.val];
+          delete this.cache[path];
         }
         this.policy.add(key);
       }
       ImageCache.save('queue.txt', this.policy.save());
-
     }
 }
