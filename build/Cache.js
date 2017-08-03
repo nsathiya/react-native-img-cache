@@ -6,7 +6,7 @@ const SHA1 = require("crypto-js/sha1");
 const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
 const BASE_DIR = RNFetchBlob.fs.dirs.DocumentDir + "/imageFiles";
 const QUEUE_DIR = RNFetchBlob.fs.dirs.DocumentDir + "/";
-const CACHE_LIMIT_FILE_COUNT = 5;
+const CACHE_LIMIT_FILE_COUNT = 10;
 
 export class ImageCache {
 
@@ -183,7 +183,7 @@ export class ImageCache {
     }
 
     isFull(){
-      return Object.keys(this.cache).length >= CACHE_LIMIT_FILE_COUNT;
+      return Object.keys(this.cache).length > CACHE_LIMIT_FILE_COUNT;
     }
 
     update(key){
@@ -195,7 +195,7 @@ export class ImageCache {
           this.policy.remove(lowestPriority);
           const path = this.getPath(lowestPriority);
           RNFetchBlob.fs.unlink(path);
-          delete this.cache[path];
+          delete this.cache[lowestPriority];
         }
         this.policy.add(key);
       }
