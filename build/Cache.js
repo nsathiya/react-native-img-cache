@@ -145,6 +145,7 @@ export class ImageCache {
                     console.log('download finished...');
                     cache.downloading = false;
                     cache.path = path;
+		    console.log('path saved to,', path);
                     this.notify(source.dbPath);
                 }).catch(() => {
                     cache.downloading = false;
@@ -174,16 +175,18 @@ export class ImageCache {
         }
     }
     notify(dbPath) {
+
         const handlers = this.cache[dbPath].handlers;
         handlers.forEach(handler => {
             handler(this.cache[dbPath].path);
         });
         //Cache eviction update
-        this.update(dbPath)
+         this.update(dbPath)
     }
 
     isFull(){
-      return Object.keys(this.cache).length > CACHE_LIMIT_FILE_COUNT;
+      //return Object.keys(this.cache).length > CACHE_LIMIT_FILE_COUNT;
+      return this.policy.queue.getSize() >= CACHE_LIMIT_FILE_COUNT;
     }
 
     update(key){
@@ -191,6 +194,7 @@ export class ImageCache {
         this.policy.updatePriority(key);
       } else {
         if (this.isFull()){
+	        //console.log('cache is Full!');
           const lowestPriority = this.policy.lowestPriority();
           this.policy.remove(lowestPriority);
           const path = this.getPath(lowestPriority);
