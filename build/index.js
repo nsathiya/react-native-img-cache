@@ -17,26 +17,35 @@ export class BaseCachedImage extends Component {
         this.state = { path: undefined };
     }
     dispose() {
+      return new Promise((resolve, reject)=> {
         if (this.dbPath) {
-            ImageCache
-            .get()
-            .then((cacheInstance) => {
-              cacheInstance.dispose(this.dbPath, this.handler);
-            })
-            .catch((err) => console.log('Error observing- ', err))
+          ImageCache
+          .get()
+          .then((cacheInstance) => {
+            cacheInstance.dispose(this.dbPath, this.handler);
+            resolve();
+          })
+          .catch((err) => {
+            console.log('Error observing- ', err)
+            reject(err);
+          })
+        } else {
+          resolve();
         }
+      })
     }
     observe(source, mutable) {
         if (source.dbPath !== this.dbPath) {
-            this.dispose();
-            this.dbPath = source.dbPath;
+            this.dispose().then(() => {
+              this.dbPath = source.dbPath;
 
-            ImageCache
-            .get()
-            .then((cacheInstance) => {
-              cacheInstance.on(source, this.handler, !mutable);
-            })
-            .catch((err) => console.log('Error observing- ', err))
+              ImageCache
+              .get()
+              .then((cacheInstance) => {
+                cacheInstance.on(source, this.handler, !mutable);
+              })
+              .catch((err) => console.log('Error observing- ', err))
+            });
         }
     }
     getProps() {
