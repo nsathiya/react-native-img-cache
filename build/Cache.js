@@ -73,9 +73,13 @@ export class ImageCache {
         this.requestQueue = [];
     }
 
-    getPath(dbPath) {
-        const ext = dbPath.indexOf(".") === -1 ? ".jpg" : dbPath.substring(dbPath.lastIndexOf("."));
-        return BASE_DIR + "/" + SHA1(dbPath) + ext;
+    getPath(dbPath, isLocal) {
+        if (isLocal){
+          return dbPath
+        } else {
+          const ext = dbPath.indexOf(".") === -1 ? ".jpg" : dbPath.substring(dbPath.lastIndexOf("."));
+          return BASE_DIR + "/" + SHA1(dbPath) + ext;
+        }
     }
 
     static get() {
@@ -99,7 +103,7 @@ export class ImageCache {
 
     on(source, handler, immutable) {
         console.log('ImageCache Operations on...');
-        const { dbPath, dbProvider } = source;
+        const { dbPath, dbProvider, isLocal } = source;
         if (!this.cache[dbPath]) {
             console.log('Entry not in application cache');
             this.cache[dbPath] = {
@@ -107,14 +111,14 @@ export class ImageCache {
                 downloading: false,
                 handlers: [handler],
                 immutable: immutable === true,
-                path: this.getPath(dbPath)
+                path: this.getPath(dbPath, isLocal)
             };
-            this.get(dbPath);
+            this.get(dbPath, isLocal);
         }
         else {
 
             this.cache[dbPath].handlers.push(handler);
-            this.get(dbPath);
+            this.get(dbPath, isLocal);
         }
     }
 
@@ -145,8 +149,7 @@ export class ImageCache {
                     console.log('download finished...');
                     cache.downloading = false;
                     cache.path = path;
-		    console.log('path saved to,', path);
-                    this.notify(source.dbPath);
+                    this.notify(source.dbPath, false);
                 }).catch(() => {
                     cache.downloading = false;
                     // Parts of the image may have been downloaded already, (see https://github.com/wkh237/react-native-fetch-blob/issues/331)
@@ -157,13 +160,13 @@ export class ImageCache {
             console.log('Error retriveing download URL : ', err);
         });
     }
-    get(dbPath) {
+    get(dbPath, isLocal) {
         const cache = this.cache[dbPath];
         if (cache.path) {
             // We check here if IOS didn't delete the cache content
             RNFetchBlob.fs.exists(cache.path).then((exists) => {
                 if (exists) {
-                    this.notify(dbPath);
+                    this.notify(dbPath, isLocal);
                 }
                 else {
                     this.download(cache);
@@ -174,14 +177,17 @@ export class ImageCache {
             this.download(cache);
         }
     }
-    notify(dbPath) {
+    notify(dbPath, isLocal) {
 
         const handlers = this.cache[dbPath].handlers;
         handlers.forEach(handler => {
             handler(this.cache[dbPath].path);
         });
         //Cache eviction update
+        if (!isLocal){
+         //only update if photo is stored on our memory space
          this.update(dbPath)
+        }
     }
 
     isFull(){
