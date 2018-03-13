@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Image, Platform } from "react-native";
+import { Image, Platform, View, ActivityIndicator } from "react-native";
 import RNFetchBlob from "react-native-fetch-blob";
 
 import { ImageCache } from './Cache'

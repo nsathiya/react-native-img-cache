@@ -206,7 +206,7 @@ export class ImageCache {
           const path = this.getPath(lowestPriority);
           RNFetchBlob.fs.unlink(path);
           delete this.cache[lowestPriority];
-          lowestPriority = this.policy.lowestPriority();
+          lowestPriority = this.policy.lowestPriority(this.cache);
         }
         this.policy.add(key);
       }
