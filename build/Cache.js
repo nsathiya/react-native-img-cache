@@ -6,12 +6,13 @@ const SHA1 = require("crypto-js/sha1");
 const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
 const BASE_DIR = RNFetchBlob.fs.dirs.DocumentDir + "/imageFiles";
 const QUEUE_DIR = RNFetchBlob.fs.dirs.DocumentDir + "/";
-const CACHE_LIMIT_FILE_COUNT = 50;
+const CACHE_LIMIT_FILE_COUNT = 5;
 
 export class ImageCache {
 
     static readQueue(file) {
       return new Promise((resolve, reject) => {
+        console.log('Queue dir', QUEUE_DIR + file)
         RNFetchBlob.fs.readFile(QUEUE_DIR + file, 'utf8')
         .then((data) => resolve(JSON.parse(data)))
         .catch((err) => {
@@ -191,7 +192,6 @@ export class ImageCache {
     }
 
     isFull(){
-      //return Object.keys(this.cache).length > CACHE_LIMIT_FILE_COUNT;
       return this.policy.queue.getSize() >= CACHE_LIMIT_FILE_COUNT;
     }
 
@@ -199,13 +199,14 @@ export class ImageCache {
       if (this.policy.hasVal(key)){
         this.policy.updatePriority(key);
       } else {
-        if (this.isFull()){
-	        //console.log('cache is Full!');
-          const lowestPriority = this.policy.lowestPriority();
+        let lowestPriority = this.policy.lowestPriority(this.cache);
+        while (this.isFull() && lowestPriority){
+	        console.log('Removing lowestPriority', lowestPriority)
           this.policy.remove(lowestPriority);
           const path = this.getPath(lowestPriority);
           RNFetchBlob.fs.unlink(path);
           delete this.cache[lowestPriority];
+          lowestPriority = this.policy.lowestPriority();
         }
         this.policy.add(key);
       }
