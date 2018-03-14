@@ -43,7 +43,7 @@ export class LRUPolicy {
       }
     }
 
-    lowestPriority(){
+    lowestPriority(cache){
       if (this.queue.getSize() > 0){
         const currentValue = this.queue.peek()
         let currentNode = this.map[currentValue]
