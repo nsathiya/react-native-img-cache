@@ -1,6 +1,6 @@
 {
   "name": "@fibo-app/fibo-imagecache",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "CachedImage component for React native",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
