@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Image, Platform } from "react-native";
+import { Image, Platform, View, ActivityIndicator } from "react-native";
 import RNFetchBlob from "react-native-fetch-blob";
 
 import { ImageCache } from './Cache'
@@ -12,9 +12,9 @@ export class BaseCachedImage extends Component {
     constructor() {
         super();
         this.handler = (path) => {
-            this.setState({ path });
+            this.setState({ path, loading: false });
         };
-        this.state = { path: undefined };
+        this.state = { path: undefined, loading: true };
     }
     dispose() {
       return new Promise((resolve, reject)=> {
@@ -92,7 +92,21 @@ export class CachedImage extends BaseCachedImage {
     }
     render() {
         const props = this.getProps();
-        return React.createElement(Image, Object.assign({}, props), this.props.children);
+        const el = React.createElement(Image, Object.assign({}, props), this.props.children);
+        return (
+          <View style={{ flex: 1 }}>
+            { el }
+            {
+              this.state.loading
+              &&
+              <ActivityIndicator
+                style={{ position: 'absolute', bottom: 8, right: 8 }}
+                animating={true}
+                color={'#527da3'}
+                size='small'/>
+            }
+          </View>
+        )
     }
 }
 export class CustomCachedImage extends BaseCachedImage {
@@ -103,6 +117,20 @@ export class CustomCachedImage extends BaseCachedImage {
         const { component } = this.props;
         const props = this.getProps();
         const Component = component;
-        return React.createElement(Component, Object.assign({}, props), this.props.children);
+        const el = React.createElement(Component, Object.assign({}, props), this.props.children);
+        return (
+          <View style={{ flex: 1 }}>
+            { el }
+            {
+              this.state.loading
+              &&
+              <ActivityIndicator
+                style={{ position: 'absolute', bottom: 8, right: 8 }}
+                animating={true}
+                color={'#527da3'}
+                size='small'/>
+            }
+          </View>
+        )
     }
 }

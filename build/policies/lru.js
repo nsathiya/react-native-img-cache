@@ -43,9 +43,16 @@ export class LRUPolicy {
       }
     }
 
-    lowestPriority(){
+    lowestPriority(cache){
       if (this.queue.getSize() > 0){
-        return this.queue.peek();
+        const currentValue = this.queue.peek()
+        let currentNode = this.map[currentValue]
+        let hasHandlers = this.hasHandlers(currentValue, cache)
+        while(hasHandlers && currentNode){
+          currentNode = currentNode.prev
+          hasHandlers = this.hasHandlers(currentNode.val, cache)
+        }
+        return currentNode.val
       }
     }
 
@@ -55,6 +62,10 @@ export class LRUPolicy {
         this.queue.remove(updateNode)
         this.queue.enqueue(updateNode)
       }
+    }
+
+    hasHandlers(val, cache){
+      return cache[val] && cache[val].handlers.length > 0
     }
 
     hasVal(val){
